@@ -1,10 +1,6 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { DEFAULT_ITEMS } from "./shop-config";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "items.json");
+import { readJson, writeJson } from "./store";
 
 let queue = Promise.resolve();
 
@@ -38,31 +34,17 @@ function seedItems() {
   });
 }
 
-async function ensureFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify(seedItems(), null, 2), "utf8");
-  }
-}
-
 async function readItems() {
-  await ensureFile();
-  try {
-    const raw = await fs.readFile(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const stored = await readJson("items");
+  if (Array.isArray(stored)) return stored;
+
+  const seeded = seedItems();
+  await writeJson("items", seeded);
+  return seeded;
 }
 
 async function writeItems(items) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tempFile = `${DATA_FILE}.${process.pid}.tmp`;
-  await fs.writeFile(tempFile, JSON.stringify(items, null, 2), "utf8");
-  await fs.rename(tempFile, DATA_FILE);
+  await writeJson("items", items);
 }
 
 function normalize(input = {}) {

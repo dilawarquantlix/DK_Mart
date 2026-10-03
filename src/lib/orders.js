@@ -1,10 +1,6 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { getItems } from "./items";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "orders.json");
+import { readJson, writeJson } from "./store";
 
 let queue = Promise.resolve();
 
@@ -17,31 +13,13 @@ function enqueue(work) {
   return run;
 }
 
-async function ensureFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(DATA_FILE, "[]", "utf8");
-  }
-}
-
 async function readOrders() {
-  await ensureFile();
-  try {
-    const raw = await fs.readFile(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const stored = await readJson("orders");
+  return Array.isArray(stored) ? stored : [];
 }
 
 async function writeOrders(orders) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tempFile = `${DATA_FILE}.${process.pid}.tmp`;
-  await fs.writeFile(tempFile, JSON.stringify(orders, null, 2), "utf8");
-  await fs.rename(tempFile, DATA_FILE);
+  await writeJson("orders", orders);
 }
 
 async function buildLineItems(lineItems) {
